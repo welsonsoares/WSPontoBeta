@@ -1,449 +1,263 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Planilha de Ponto Semanal — Criado por Welson Soares</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Folha de Ponto Mensal</title>
   <style>
-    :root{
-      --bg:#f4f6f8; --card:#ffffff; --muted:#6b7280; --accent:#0ea5a4; --danger:#ef4444;
-      --glass: rgba(2,6,23,0.04);
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      color: #333;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#eef2f7 0%, #f8fafc 100%);font-family:Inter,Segoe UI,Arial;color:#0f172a;padding:20px;}
-    .container{max-width:1080px;margin:10px auto;padding:18px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
-    h1{margin:0 0 6px;font-size:20px;color:var(--accent)}
-    p.lead{margin:0 0 16px;color:var(--muted);font-size:13px}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    thead th{background:#f1f5f9;padding:10px 8px;text-align:left;font-size:13px;color:#334155;border-bottom:1px solid #e6eef6}
-    tbody td{padding:8px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
-    td.center{text-align:center}
-    input[type=time], input[type=date], select{padding:6px 8px;border-radius:6px;border:1px solid #e2e8f0;background:white;color:#0f172a}
-    .small{font-size:12px;color:var(--muted)}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
-    button{background:linear-gradient(90deg,var(--accent),#3b82f6);border:0;color:white;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
-    button.ghost{background:transparent;border:1px solid #e6eef6;color:var(--muted)}
-    button.danger{background:var(--danger)}
-    .status{font-size:12px;color:var(--muted)}
-    .saved-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#10b981;margin-right:6px;vertical-align:middle}
-    .unsaved-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;margin-right:6px;vertical-align:middle}
-    tfoot td{padding:10px;background:#fafafa;font-weight:700}
-    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
-    @media (max-width:920px){
-      thead th:nth-child(1), tbody td:nth-child(1){min-width:120px}
-      table, thead, tbody, th, td, tr{display:block}
-      thead{display:none}
-      tbody tr{margin-bottom:12px;padding:10px;background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.03)}
-      tbody td{display:flex;justify-content:space-between;padding:8px}
-      tbody td label{font-weight:600;color:#334155}
+    h1, h2 {
+      text-align: center;
+      color: #2b2b2b;
+    }
+    .container {
+      max-width: 950px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    label, select, input {
+      font-size: 16px;
+      margin: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #e0e0e0;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      margin: 10px 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #555;
+    }
+    .cadastro {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    input[type="text"] {
+      padding: 5px;
+      width: 200px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Planilha de Ponto Semanal</h1>
-    <p class="lead">Entrada / Saída intervalo / Retorno / Saída final — intervalo padrão 1h12m. Salva localmente (LocalStorage) e permite exportar CSV/JSON.</p>
+  <div class="container" id="pontoContainer">
+    <h1>Folha de Ponto Mensal</h1>
 
-    <table id="pontoTable" aria-label="Planilha de ponto">
+    <div class="cadastro">
+      <h2>Cadastro de Funcionários</h2>
+      <input type="text" id="nomeFuncionario" placeholder="Nome do funcionário">
+      <input type="text" id="cargoFuncionario" placeholder="Cargo (opcional)">
+      <button onclick="adicionarFuncionario()">➕ Adicionar</button>
+      <select id="listaFuncionarios" onchange="selecionarFuncionario()">
+        <option value="">Selecione um funcionário</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="mes">Selecione o mês:</label>
+      <input type="month" id="mes" value="2025-11" onchange="gerarTabela()">
+    </div>
+
+    <table id="tabelaPonto">
       <thead>
         <tr>
-          <th style="width:160px">Dia</th>
-          <th style="width:130px">Data</th>
-          <th style="width:110px">Entrada</th>
-          <th style="width:120px">Saída (intervalo)</th>
-          <th style="width:130px">Retorno</th>
-          <th style="width:110px">Saída final</th>
-          <th style="width:120px" class="center">Horas trabalhadas</th>
-          <th style="width:120px" class="center">Diferença</th>
-          <th style="width:140px" class="center">Ações</th>
+          <th>Data</th>
+          <th>Entrada</th>
+          <th>Saída Intervalo</th>
+          <th>Retorno</th>
+          <th>Saída Final</th>
+          <th>Total (h)</th>
         </tr>
       </thead>
-      <tbody>
-        <!-- Rows serão geradas via JS -->
-      </tbody>
+      <tbody></tbody>
       <tfoot>
         <tr>
-          <td colspan="6">Total Semanal</td>
-          <td class="center" id="totalHoras">--:--</td>
-          <td class="center" id="totalDiff">--:--</td>
-          <td class="center small">Padrão dia: 8h48m</td>
-        </tr>
-        <tr>
-          <td colspan="6">Horas Extras (positivas)</td>
-          <td colspan="3" class="center" id="totalExtras">0.00 h</td>
-        </tr>
-        <tr>
-          <td colspan="6">Horas Negativas (faltantes)</td>
-          <td colspan="3" class="center" id="totalNegativas">0.00 h</td>
+          <th colspan="5">Total do Mês</th>
+          <th id="totalMes">0</th>
         </tr>
       </tfoot>
     </table>
 
-    <div class="controls" style="margin-top:12px">
-      <button id="btnExportCSV">Exportar CSV</button>
-      <button id="btnExportJSON" class="ghost">Exportar JSON</button>
-      <button id="btnClear" class="ghost">Limpar dados salvos</button>
-      <div style="flex:1"></div>
-      <div class="status small">Status: <span id="globalStatus">Nenhum registro</span></div>
+    <div style="text-align:center;">
+      <button onclick="salvarDados()">💾 Salvar em Disco (CSV)</button>
+      <button onclick="exportarPNG()">🖼️ Exportar em PNG</button>
+      <button onclick="limparDados()">🧹 Limpar Dados</button>
     </div>
 
     <footer>
-      Criado e licenciado por <strong>Welson Soares</strong>
+      Criado e licenciado por <b>Welson Soares</b>
     </footer>
   </div>
 
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <script>
-    /* ======= Config ======= */
-    const DAYS = ['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira'];
-    const STORAGE_KEY = 'ponto-semanal-welson';
-    const STANDARD_MIN_PER_DAY = 8*60 + 48; // 528 min (8h48)
-    const DEFAULT_TIMES = { entrada: '08:00', saidaIntervalo: '12:00', retorno: '13:12', saidaFinal: '18:00' };
+    let funcionarioAtivo = null;
 
-    /* ======= Utilitários de tempo ======= */
-    function timeToMinutes(t){
-      if(!t) return null;
-      const parts = t.split(':').map(s=>parseInt(s,10));
-      if(parts.length<2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
-      return parts[0]*60 + parts[1];
-    }
-    function minutesToHHMM(min){
-      if(min===null||isNaN(min)) return '--:--';
-      const sign = min<0 ? '-' : '';
-      min = Math.abs(Math.round(min));
-      const h = Math.floor(min/60);
-      const m = min%60;
-      return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-    }
-    function minutesToDecimalHours(min){
-      if(min===null||isNaN(min)) return 0;
-      return (min/60).toFixed(2);
+    function adicionarFuncionario() {
+      const nome = document.getElementById('nomeFuncionario').value.trim();
+      const cargo = document.getElementById('cargoFuncionario').value.trim();
+      if (!nome) return alert('Digite o nome do funcionário!');
+      const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      const existe = funcionarios.find(f => f.nome === nome);
+      if (existe) return alert('Funcionário já cadastrado!');
+      funcionarios.push({ nome, cargo });
+      localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+      atualizarListaFuncionarios();
+      document.getElementById('nomeFuncionario').value = '';
+      document.getElementById('cargoFuncionario').value = '';
     }
 
-    /* ======= Estado e persistência ======= */
-    let state = {}; // { 'Segunda-feira': { date, entrada, saidaIntervalo, retorno, saidaFinal, savedAt } ... }
-
-    function loadState(){
-      try{
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if(!raw) return;
-        state = JSON.parse(raw);
-        updateGlobalStatus('Dados carregados do disco');
-      }catch(e){
-        console.error('Erro ao carregar state', e);
-        updateGlobalStatus('Erro ao carregar dados');
-      }
-    }
-    function saveState(){
-      try{
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        updateGlobalStatus('Dados salvos automaticamente');
-      }catch(e){
-        console.error('Erro ao salvar state', e);
-        updateGlobalStatus('Erro ao salvar dados');
-      }
-    }
-    function clearState(){
-      state = {};
-      localStorage.removeItem(STORAGE_KEY);
-      renderRows();
-      computeAll();
-      updateGlobalStatus('Dados limpos');
-    }
-
-    /* ======= UI e render ======= */
-    const tbody = document.querySelector('#pontoTable tbody');
-    const totalHorasEl = document.getElementById('totalHoras');
-    const totalDiffEl = document.getElementById('totalDiff');
-    const totalExtrasEl = document.getElementById('totalExtras');
-    const totalNegativasEl = document.getElementById('totalNegativas');
-    const globalStatus = document.getElementById('globalStatus');
-
-    function updateGlobalStatus(txt){
-      globalStatus.textContent = txt;
-    }
-
-    function makeRow(day){
-      const tr = document.createElement('tr');
-      tr.dataset.day = day;
-
-      const d = state[day] || {};
-      // Cells: Dia | Data | Entrada | SaídaIntervalo | Retorno | SaídaFinal | Horas | Dif | Ações
-      tr.innerHTML = `
-        <td><strong>${day}</strong></td>
-        <td><input type="date" class="date" value="${d.date || ''}" /></td>
-        <td><input type="time" class="entrada" value="${d.entrada || DEFAULT_TIMES.entrada}" /></td>
-        <td><input type="time" class="saidaIntervalo" value="${d.saidaIntervalo || DEFAULT_TIMES.saidaIntervalo}" /></td>
-        <td><input type="time" class="retorno" value="${d.retorno || DEFAULT_TIMES.retorno}" /></td>
-        <td><input type="time" class="saidaFinal" value="${d.saidaFinal || DEFAULT_TIMES.saidaFinal}" /></td>
-        <td class="center horas">--:--<div class="small">(<span class="horasDec">0.00</span> h)</div></td>
-        <td class="center diff">--:--</td>
-        <td class="center">
-          <button class="saveRow ghost">Salvar dia</button>
-          <button class="clearRow ghost" title="Limpar só este dia">Limpar</button>
-          <div style="height:6px"></div>
-          <div class="rowStatus small"><span class="${d.savedAt ? 'saved-dot' : 'unsaved-dot'}"></span><span class="savedText">${d.savedAt ? timeAgo(d.savedAt) : 'não salvo'}</span></div>
-        </td>
-      `.trim();
-
-      // Evento: qualquer alteração -> auto-save & recalc row
-      const inputs = tr.querySelectorAll('input');
-      inputs.forEach(inp=>{
-        inp.addEventListener('input', ()=> {
-          markRowUnsaved(tr);
-          computeRow(tr);
-          // autosave
-          saveRowToState(tr.dataset.day, collectRowValues(tr), true);
-        });
+    function atualizarListaFuncionarios() {
+      const lista = document.getElementById('listaFuncionarios');
+      lista.innerHTML = '<option value="">Selecione um funcionário</option>';
+      const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      funcionarios.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.nome;
+        opt.textContent = f.nome + (f.cargo ? ` - ${f.cargo}` : '');
+        lista.appendChild(opt);
       });
-
-      // Save button (forçar)
-      tr.querySelector('.saveRow').addEventListener('click', ()=> {
-        const values = collectRowValues(tr);
-        saveRowToState(tr.dataset.day, values, false); // not autosave message? we'll mark savedAt
-        updateRowStatus(tr, true);
-        updateGlobalStatus(`Dia ${tr.dataset.day} salvo`);
-      });
-
-      // Clear row button
-      tr.querySelector('.clearRow').addEventListener('click', ()=> {
-        // remove from state and reset inputs
-        delete state[tr.dataset.day];
-        saveState();
-        renderRows();
-        computeAll();
-        updateGlobalStatus(`Dia ${tr.dataset.day} limpo`);
-      });
-
-      return tr;
     }
 
-    function renderRows(){
+    function selecionarFuncionario() {
+      funcionarioAtivo = document.getElementById('listaFuncionarios').value;
+      if (funcionarioAtivo) gerarTabela();
+    }
+
+    function gerarTabela() {
+      if (!funcionarioAtivo) return alert('Selecione um funcionário!');
+      const mesInput = document.getElementById('mes').value;
+      const ano = parseInt(mesInput.split('-')[0]);
+      const mes = parseInt(mesInput.split('-')[1]);
+      const tbody = document.querySelector('#tabelaPonto tbody');
       tbody.innerHTML = '';
-      DAYS.forEach(day=>{
-        const tr = makeRow(day);
-        tbody.appendChild(tr);
-        computeRow(tr);
-        updateRowStatus(tr, !!(state[day] && state[day].savedAt));
+      const dias = new Date(ano, mes, 0).getDate();
+
+      for (let i = 1; i <= dias; i++) {
+        const dataStr = `${ano}-${String(mes).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${dataStr}</td>
+          <td><input type="time" onchange="atualizar(${i})" id="entrada-${i}"></td>
+          <td><input type="time" onchange="atualizar(${i})" id="saidaInt-${i}"></td>
+          <td><input type="time" onchange="atualizar(${i})" id="retorno-${i}"></td>
+          <td><input type="time" onchange="atualizar(${i})" id="saida-${i}"></td>
+          <td id="total-${i}">0</td>
+        `;
+        tbody.appendChild(row);
+      }
+      carregarLocal();
+    }
+
+    function atualizar(dia) {
+      const entrada = document.getElementById(`entrada-${dia}`).value;
+      const saidaInt = document.getElementById(`saidaInt-${dia}`).value;
+      const retorno = document.getElementById(`retorno-${dia}`).value;
+      const saida = document.getElementById(`saida-${dia}`).value;
+
+      if (entrada && saidaInt && retorno && saida) {
+        const total =
+          (calcMin(saidaInt) - calcMin(entrada)) +
+          (calcMin(saida) - calcMin(retorno));
+        document.getElementById(`total-${dia}`).innerText = (total / 60).toFixed(2);
+      }
+      salvarLocal();
+      calcularTotalMes();
+    }
+
+    function calcMin(hora) {
+      const [h, m] = hora.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function calcularTotalMes() {
+      let total = 0;
+      const dias = document.querySelectorAll('[id^=total-]');
+      dias.forEach(td => total += parseFloat(td.innerText) || 0);
+      document.getElementById('totalMes').innerText = total.toFixed(2);
+    }
+
+    function salvarLocal() {
+      if (!funcionarioAtivo) return;
+      const mes = document.getElementById('mes').value;
+      const dados = {};
+      const inputs = document.querySelectorAll('input[type="time"]');
+      inputs.forEach(input => dados[input.id] = input.value);
+      localStorage.setItem(`folha_${funcionarioAtivo}_${mes}`, JSON.stringify(dados));
+    }
+
+    function carregarLocal() {
+      if (!funcionarioAtivo) return;
+      const mes = document.getElementById('mes').value;
+      const dados = JSON.parse(localStorage.getItem(`folha_${funcionarioAtivo}_${mes}`) || '{}');
+      Object.keys(dados).forEach(id => {
+        if (document.getElementById(id)) document.getElementById(id).value = dados[id];
       });
+      calcularTotalMes();
     }
 
-    /* ======= Row helpers ======= */
-    function collectRowValues(tr){
-      return {
-        date: tr.querySelector('.date').value || '',
-        entrada: tr.querySelector('.entrada').value || '',
-        saidaIntervalo: tr.querySelector('.saidaIntervalo').value || '',
-        retorno: tr.querySelector('.retorno').value || '',
-        saidaFinal: tr.querySelector('.saidaFinal').value || '',
-      };
+    function limparDados() {
+      if (!funcionarioAtivo) return;
+      const mes = document.getElementById('mes').value;
+      localStorage.removeItem(`folha_${funcionarioAtivo}_${mes}`);
+      gerarTabela();
     }
 
-    function saveRowToState(day, values, isAutoSave){
-      state[day] = Object.assign({}, values, { savedAt: new Date().toISOString() });
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        // update visual row
-        const tr = tbody.querySelector(`tr[data-day="${day}"]`);
-        if(tr) updateRowStatus(tr, true);
-        if(!isAutoSave) updateGlobalStatus(`Dia ${day} salvo no disco`);
-      } catch(e){
-        console.error('Erro salvando row', e);
-        updateGlobalStatus('Erro ao salvar no disco');
-      }
-    }
-
-    function updateRowStatus(tr, saved){
-      const dot = tr.querySelector('.rowStatus .saved-dot, .rowStatus .unsaved-dot');
-      const text = tr.querySelector('.rowStatus .savedText');
-      if(saved){
-        if(dot) dot.className = 'saved-dot';
-        if(text){
-          const s = state[tr.dataset.day] && state[tr.dataset.day].savedAt ? timeAgo(state[tr.dataset.day].savedAt) : 'salvo';
-          text.textContent = s;
-        }
-      } else {
-        if(dot) dot.className = 'unsaved-dot';
-        if(text) text.textContent = 'não salvo';
-      }
-    }
-    function markRowUnsaved(tr){
-      updateRowStatus(tr, false);
-      updateGlobalStatus('Alterações (salvas automaticamente)');
-    }
-
-    /* ======= Cálculo linha / tabela ======= */
-    function computeRow(tr){
-      const ent = tr.querySelector('.entrada').value;
-      const si = tr.querySelector('.saidaIntervalo').value;
-      const ret = tr.querySelector('.retorno').value;
-      const out = tr.querySelector('.saidaFinal').value;
-
-      const entMin = timeToMinutes(ent);
-      const siMin = timeToMinutes(si);
-      const retMin = timeToMinutes(ret);
-      const outMin = timeToMinutes(out);
-
-      let worked = null;
-      if(entMin!==null && siMin!==null && retMin!==null && outMin!==null){
-        const morning = Math.max(0, siMin - entMin);
-        const afternoon = Math.max(0, outMin - retMin);
-        worked = morning + afternoon;
-      }
-
-      const horasEl = tr.querySelector('.horas');
-      const diffEl = tr.querySelector('.diff');
-
-      if(worked!==null){
-        horasEl.querySelector('.horasDec') ? horasEl.querySelector('.horasDec').textContent = minutesToDecimalHours(worked) : null;
-        horasEl.firstChild && (horasEl.firstChild.textContent = minutesToHHMM(worked));
-        const diff = worked - STANDARD_MIN_PER_DAY;
-        diffEl.textContent = minutesToHHMM(diff);
-        tr.dataset.worked = worked;
-        tr.dataset.diff = diff;
-      } else {
-        horasEl.firstChild && (horasEl.firstChild.textContent = '--:--');
-        horasEl.querySelector('.horasDec') ? horasEl.querySelector('.horasDec').textContent = '0.00' : null;
-        diffEl.textContent = '--:--';
-        tr.dataset.worked = '';
-        tr.dataset.diff = '';
-      }
-    }
-
-    function computeAll(){
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      let totalWorked = 0, totalDiff = 0; let any=false;
-      rows.forEach(r => {
-        computeRow(r);
-        const w = parseFloat(r.dataset.worked);
-        const d = parseFloat(r.dataset.diff);
-        if(!isNaN(w)){ totalWorked += w; any=true; }
-        if(!isNaN(d)){ totalDiff += d; }
+    function salvarDados() {
+      const linhas = [['Data', 'Entrada', 'Saída Intervalo', 'Retorno', 'Saída Final', 'Total (h)']];
+      const trs = document.querySelectorAll('#tabelaPonto tbody tr');
+      trs.forEach(tr => {
+        const cols = [...tr.querySelectorAll('td')].map(td => td.innerText || td.querySelector('input')?.value || '');
+        linhas.push(cols);
       });
-
-      if(any){
-        totalHorasEl.textContent = minutesToHHMM(totalWorked);
-        totalDiffEl.textContent = minutesToHHMM(totalDiff);
-        const extras = totalDiff>0 ? (totalDiff/60).toFixed(2) : '0.00';
-        const neg = totalDiff<0 ? (Math.abs(totalDiff)/60).toFixed(2) : '0.00';
-        totalExtrasEl.textContent = extras + ' h';
-        totalNegativasEl.textContent = neg + ' h';
-      } else {
-        totalHorasEl.textContent = '--:--';
-        totalDiffEl.textContent = '--:--';
-        totalExtrasEl.textContent = '0.00 h';
-        totalNegativasEl.textContent = '0.00 h';
-      }
-    }
-
-    /* ======= Export / Download ======= */
-    function downloadFile(filename, content, mime='text/plain'){
-      const blob = new Blob([content], {type: mime + ';charset=utf-8;'});
+      const csv = linhas.map(l => l.join(';')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
+      a.download = `folha_${funcionarioAtivo}.csv`;
       a.click();
-      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 5000);
     }
 
-    function exportJSON(){
-      const data = prepareExportData();
-      downloadFile('ponto_semanal.json', JSON.stringify(data, null, 2), 'application/json');
-      updateGlobalStatus('JSON gerado para download');
-    }
-
-    function exportCSV(){
-      const rows = prepareExportData();
-      const headers = ['dia','date','entrada','saida_intervalo','retorno','saida_final','horas_trabalhadas_hhmm','horas_trabalhadas_dec','dif_hhmm'];
-      const lines = [headers.join(',')];
-      rows.forEach(r=>{
-        const line = [
-          r.dia,
-          r.date || '',
-          r.entrada || '',
-          r.saida_intervalo || '',
-          r.retorno || '',
-          r.saida_final || '',
-          r.horas_trabalhadas_hhmm || '',
-          r.horas_trabalhadas_dec || '',
-          r.dif_hhmm || ''
-        ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
-        lines.push(line);
+    function exportarPNG() {
+      html2canvas(document.getElementById('pontoContainer')).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `folha_${funcionarioAtivo}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
       });
-      // totals
-      lines.push(`"Total Semanal","","","","","","${totalHorasEl.textContent}","${(parseFloat(totalHorasEl.textContent.split(':')[0]||0) + (parseFloat(totalHorasEl.textContent.split(':')[1]||0)/60)).toFixed(2)}","${totalDiffEl.textContent}"`);
-      lines.push(`"Horas Extras","","","","","","${totalExtrasEl.textContent}","",""`);
-      lines.push(`"Horas Negativas","","","","","","${totalNegativasEl.textContent}","",""`);
-      downloadFile('ponto_semanal.csv', lines.join('\\n'), 'text/csv');
-      updateGlobalStatus('CSV gerado para download');
     }
 
-    function prepareExportData(){
-      const rows = [];
-      DAYS.forEach(day=>{
-        const d = state[day] || {};
-        const worked = computeWorkedFromState(d);
-        const diffMin = (worked!==null ? worked - STANDARD_MIN_PER_DAY : null);
-        rows.push({
-          dia: day,
-          date: d.date || '',
-          entrada: d.entrada || '',
-          saida_intervalo: d.saidaIntervalo || '',
-          retorno: d.retorno || '',
-          saida_final: d.saidaFinal || '',
-          horas_trabalhadas_hhmm: worked!==null ? minutesToHHMM(worked) : '',
-          horas_trabalhadas_dec: worked!==null ? minutesToDecimalHours(worked) : '',
-          dif_hhmm: diffMin!==null ? minutesToHHMM(diffMin) : '',
-          savedAt: d.savedAt || ''
-        });
-      });
-      return rows;
-    }
-
-    function computeWorkedFromState(d){
-      if(!d) return null;
-      const ent = timeToMinutes(d.entrada);
-      const si = timeToMinutes(d.saidaIntervalo);
-      const ret = timeToMinutes(d.retorno);
-      const out = timeToMinutes(d.saidaFinal);
-      if(ent===null||si===null||ret===null||out===null) return null;
-      const morning = Math.max(0, si - ent);
-      const afternoon = Math.max(0, out - ret);
-      return morning + afternoon;
-    }
-
-    /* ======= Helpers ======= */
-    function timeAgo(iso){
-      if(!iso) return '';
-      const then = new Date(iso);
-      const diff = Math.floor((Date.now() - then.getTime())/1000);
-      if(diff < 60) return `${diff}s`;
-      if(diff < 3600) return `${Math.floor(diff/60)}m`;
-      if(diff < 86400) return `${Math.floor(diff/3600)}h`;
-      return `${Math.floor(diff/86400)}d`;
-    }
-
-    /* ======= Eventos globais ======= */
-    document.getElementById('btnExportCSV').addEventListener('click', ()=> exportCSV());
-    document.getElementById('btnExportJSON').addEventListener('click', ()=> exportJSON());
-    document.getElementById('btnClear').addEventListener('click', ()=> {
-      if(confirm('Deseja realmente apagar todos os dados salvos localmente?')) clearState();
-    });
-
-    /* ======= Inicialização ======= */
-    loadState();
-    renderRows();
-    computeAll();
-
-    // recalc periodicamente (se desejar)
-    setInterval(()=>{ computeAll(); }, 1000);
-
-    // Observador para salvar state quando fecha/navega (redundante com autosave)
-    window.addEventListener('beforeunload', ()=> {
-      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
-    });
-
+    atualizarListaFuncionarios();
   </script>
 </body>
 </html>
