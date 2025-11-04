@@ -48,9 +48,16 @@
       margin: 10px 5px;
       border-radius: 5px;
       cursor: pointer;
+      font-size: 14px;
     }
     button:hover {
       background: #0056b3;
+    }
+    .danger {
+      background: #dc3545;
+    }
+    .danger:hover {
+      background: #a71d2a;
     }
     footer {
       text-align: center;
@@ -80,6 +87,7 @@
       <select id="listaFuncionarios" onchange="selecionarFuncionario()">
         <option value="">Selecione um funcionário</option>
       </select>
+      <button class="danger" onclick="removerFuncionario()">🗑️ Remover</button>
     </div>
 
     <div>
@@ -110,7 +118,7 @@
     <div style="text-align:center;">
       <button onclick="salvarDados()">💾 Salvar em Disco (CSV)</button>
       <button onclick="exportarPNG()">🖼️ Exportar em PNG</button>
-      <button onclick="limparDados()">🧹 Limpar Dados</button>
+      <button class="danger" onclick="limparDados()">🧹 Limpar Dados</button>
     </div>
 
     <footer>
@@ -146,6 +154,26 @@
         opt.textContent = f.nome + (f.cargo ? ` - ${f.cargo}` : '');
         lista.appendChild(opt);
       });
+    }
+
+    function removerFuncionario() {
+      const nome = document.getElementById('listaFuncionarios').value;
+      if (!nome) return alert('Selecione um funcionário para remover!');
+      if (!confirm(`Tem certeza que deseja remover ${nome}?`)) return;
+      
+      let funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      funcionarios = funcionarios.filter(f => f.nome !== nome);
+      localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+
+      // Remove registros desse funcionário
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith(`folha_${nome}_`)) localStorage.removeItem(k);
+      });
+
+      if (funcionarioAtivo === nome) funcionarioAtivo = null;
+      atualizarListaFuncionarios();
+      document.querySelector('#tabelaPonto tbody').innerHTML = '';
+      document.getElementById('totalMes').innerText = '0';
     }
 
     function selecionarFuncionario() {
