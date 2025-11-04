@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Planilha de Ponto Semanal — Criado por Welson Soares</title>
+  <style>
+    :root{
+      --bg:#f4f6f8; --card:#ffffff; --muted:#6b7280; --accent:#0ea5a4; --danger:#ef4444;
+      --glass: rgba(2,6,23,0.04);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#eef2f7 0%, #f8fafc 100%);font-family:Inter,Segoe UI,Arial;color:#0f172a;padding:20px;}
+    .container{max-width:1080px;margin:10px auto;padding:18px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+    h1{margin:0 0 6px;font-size:20px;color:var(--accent)}
+    p.lead{margin:0 0 16px;color:var(--muted);font-size:13px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    thead th{background:#f1f5f9;padding:10px 8px;text-align:left;font-size:13px;color:#334155;border-bottom:1px solid #e6eef6}
+    tbody td{padding:8px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+    td.center{text-align:center}
+    input[type=time], input[type=date], select{padding:6px 8px;border-radius:6px;border:1px solid #e2e8f0;background:white;color:#0f172a}
+    .small{font-size:12px;color:var(--muted)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+    button{background:linear-gradient(90deg,var(--accent),#3b82f6);border:0;color:white;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    button.ghost{background:transparent;border:1px solid #e6eef6;color:var(--muted)}
+    button.danger{background:var(--danger)}
+    .status{font-size:12px;color:var(--muted)}
+    .saved-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#10b981;margin-right:6px;vertical-align:middle}
+    .unsaved-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;margin-right:6px;vertical-align:middle}
+    tfoot td{padding:10px;background:#fafafa;font-weight:700}
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+    @media (max-width:920px){
+      thead th:nth-child(1), tbody td:nth-child(1){min-width:120px}
+      table, thead, tbody, th, td, tr{display:block}
+      thead{display:none}
+      tbody tr{margin-bottom:12px;padding:10px;background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.03)}
+      tbody td{display:flex;justify-content:space-between;padding:8px}
+      tbody td label{font-weight:600;color:#334155}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Planilha de Ponto Semanal</h1>
+    <p class="lead">Entrada / Saída intervalo / Retorno / Saída final — intervalo padrão 1h12m. Salva localmente (LocalStorage) e permite exportar CSV/JSON.</p>
+
+    <table id="pontoTable" aria-label="Planilha de ponto">
+      <thead>
+        <tr>
+          <th style="width:160px">Dia</th>
+          <th style="width:130px">Data</th>
+          <th style="width:110px">Entrada</th>
+          <th style="width:120px">Saída (intervalo)</th>
+          <th style="width:130px">Retorno</th>
+          <th style="width:110px">Saída final</th>
+          <th style="width:120px" class="center">Horas trabalhadas</th>
+          <th style="width:120px" class="center">Diferença</th>
+          <th style="width:140px" class="center">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rows serão geradas via JS -->
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6">Total Semanal</td>
+          <td class="center" id="totalHoras">--:--</td>
+          <td class="center" id="totalDiff">--:--</td>
+          <td class="center small">Padrão dia: 8h48m</td>
+        </tr>
+        <tr>
+          <td colspan="6">Horas Extras (positivas)</td>
+          <td colspan="3" class="center" id="totalExtras">0.00 h</td>
+        </tr>
+        <tr>
+          <td colspan="6">Horas Negativas (faltantes)</td>
+          <td colspan="3" class="center" id="totalNegativas">0.00 h</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="controls" style="margin-top:12px">
+      <button id="btnExportCSV">Exportar CSV</button>
+      <button id="btnExportJSON" class="ghost">Exportar JSON</button>
+      <button id="btnClear" class="ghost">Limpar dados salvos</button>
+      <div style="flex:1"></div>
+      <div class="status small">Status: <span id="globalStatus">Nenhum registro</span></div>
+    </div>
+
+    <footer>
+      Criado e licenciado por <strong>Welson Soares</strong>
+    </footer>
+  </div>
+
+  <script>
+    /* ======= Config ======= */
+    const DAYS = ['Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira'];
+    const STORAGE_KEY = 'ponto-semanal-welson';
+    const STANDARD_MIN_PER_DAY = 8*60 + 48; // 528 min (8h48)
+    const DEFAULT_TIMES = { entrada: '08:00', saidaIntervalo: '12:00', retorno: '13:12', saidaFinal: '18:00' };
+
+    /* ======= Utilitários de tempo ======= */
+    function timeToMinutes(t){
+      if(!t) return null;
+      const parts = t.split(':').map(s=>parseInt(s,10));
+      if(parts.length<2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+      return parts[0]*60 + parts[1];
+    }
+    function minutesToHHMM(min){
+      if(min===null||isNaN(min)) return '--:--';
+      const sign = min<0 ? '-' : '';
+      min = Math.abs(Math.round(min));
+      const h = Math.floor(min/60);
+      const m = min%60;
+      return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    }
+    function minutesToDecimalHours(min){
+      if(min===null||isNaN(min)) return 0;
+      return (min/60).toFixed(2);
+    }
+
+    /* ======= Estado e persistência ======= */
+    let state = {}; // { 'Segunda-feira': { date, entrada, saidaIntervalo, retorno, saidaFinal, savedAt } ... }
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return;
+        state = JSON.parse(raw);
+        updateGlobalStatus('Dados carregados do disco');
+      }catch(e){
+        console.error('Erro ao carregar state', e);
+        updateGlobalStatus('Erro ao carregar dados');
+      }
+    }
+    function saveState(){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        updateGlobalStatus('Dados salvos automaticamente');
+      }catch(e){
+        console.error('Erro ao salvar state', e);
+        updateGlobalStatus('Erro ao salvar dados');
+      }
+    }
+    function clearState(){
+      state = {};
+      localStorage.removeItem(STORAGE_KEY);
+      renderRows();
+      computeAll();
+      updateGlobalStatus('Dados limpos');
+    }
+
+    /* ======= UI e render ======= */
+    const tbody = document.querySelector('#pontoTable tbody');
+    const totalHorasEl = document.getElementById('totalHoras');
+    const totalDiffEl = document.getElementById('totalDiff');
+    const totalExtrasEl = document.getElementById('totalExtras');
+    const totalNegativasEl = document.getElementById('totalNegativas');
+    const globalStatus = document.getElementById('globalStatus');
+
+    function updateGlobalStatus(txt){
+      globalStatus.textContent = txt;
+    }
+
+    function makeRow(day){
+      const tr = document.createElement('tr');
+      tr.dataset.day = day;
+
+      const d = state[day] || {};
+      // Cells: Dia | Data | Entrada | SaídaIntervalo | Retorno | SaídaFinal | Horas | Dif | Ações
+      tr.innerHTML = `
+        <td><strong>${day}</strong></td>
+        <td><input type="date" class="date" value="${d.date || ''}" /></td>
+        <td><input type="time" class="entrada" value="${d.entrada || DEFAULT_TIMES.entrada}" /></td>
+        <td><input type="time" class="saidaIntervalo" value="${d.saidaIntervalo || DEFAULT_TIMES.saidaIntervalo}" /></td>
+        <td><input type="time" class="retorno" value="${d.retorno || DEFAULT_TIMES.retorno}" /></td>
+        <td><input type="time" class="saidaFinal" value="${d.saidaFinal || DEFAULT_TIMES.saidaFinal}" /></td>
+        <td class="center horas">--:--<div class="small">(<span class="horasDec">0.00</span> h)</div></td>
+        <td class="center diff">--:--</td>
+        <td class="center">
+          <button class="saveRow ghost">Salvar dia</button>
+          <button class="clearRow ghost" title="Limpar só este dia">Limpar</button>
+          <div style="height:6px"></div>
+          <div class="rowStatus small"><span class="${d.savedAt ? 'saved-dot' : 'unsaved-dot'}"></span><span class="savedText">${d.savedAt ? timeAgo(d.savedAt) : 'não salvo'}</span></div>
+        </td>
+      `.trim();
+
+      // Evento: qualquer alteração -> auto-save & recalc row
+      const inputs = tr.querySelectorAll('input');
+      inputs.forEach(inp=>{
+        inp.addEventListener('input', ()=> {
+          markRowUnsaved(tr);
+          computeRow(tr);
+          // autosave
+          saveRowToState(tr.dataset.day, collectRowValues(tr), true);
+        });
+      });
+
+      // Save button (forçar)
+      tr.querySelector('.saveRow').addEventListener('click', ()=> {
+        const values = collectRowValues(tr);
+        saveRowToState(tr.dataset.day, values, false); // not autosave message? we'll mark savedAt
+        updateRowStatus(tr, true);
+        updateGlobalStatus(`Dia ${tr.dataset.day} salvo`);
+      });
+
+      // Clear row button
+      tr.querySelector('.clearRow').addEventListener('click', ()=> {
+        // remove from state and reset inputs
+        delete state[tr.dataset.day];
+        saveState();
+        renderRows();
+        computeAll();
+        updateGlobalStatus(`Dia ${tr.dataset.day} limpo`);
+      });
+
+      return tr;
+    }
+
+    function renderRows(){
+      tbody.innerHTML = '';
+      DAYS.forEach(day=>{
+        const tr = makeRow(day);
+        tbody.appendChild(tr);
+        computeRow(tr);
+        updateRowStatus(tr, !!(state[day] && state[day].savedAt));
+      });
+    }
+
+    /* ======= Row helpers ======= */
+    function collectRowValues(tr){
+      return {
+        date: tr.querySelector('.date').value || '',
+        entrada: tr.querySelector('.entrada').value || '',
+        saidaIntervalo: tr.querySelector('.saidaIntervalo').value || '',
+        retorno: tr.querySelector('.retorno').value || '',
+        saidaFinal: tr.querySelector('.saidaFinal').value || '',
+      };
+    }
+
+    function saveRowToState(day, values, isAutoSave){
+      state[day] = Object.assign({}, values, { savedAt: new Date().toISOString() });
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        // update visual row
+        const tr = tbody.querySelector(`tr[data-day="${day}"]`);
+        if(tr) updateRowStatus(tr, true);
+        if(!isAutoSave) updateGlobalStatus(`Dia ${day} salvo no disco`);
+      } catch(e){
+        console.error('Erro salvando row', e);
+        updateGlobalStatus('Erro ao salvar no disco');
+      }
+    }
+
+    function updateRowStatus(tr, saved){
+      const dot = tr.querySelector('.rowStatus .saved-dot, .rowStatus .unsaved-dot');
+      const text = tr.querySelector('.rowStatus .savedText');
+      if(saved){
+        if(dot) dot.className = 'saved-dot';
+        if(text){
+          const s = state[tr.dataset.day] && state[tr.dataset.day].savedAt ? timeAgo(state[tr.dataset.day].savedAt) : 'salvo';
+          text.textContent = s;
+        }
+      } else {
+        if(dot) dot.className = 'unsaved-dot';
+        if(text) text.textContent = 'não salvo';
+      }
+    }
+    function markRowUnsaved(tr){
+      updateRowStatus(tr, false);
+      updateGlobalStatus('Alterações (salvas automaticamente)');
+    }
+
+    /* ======= Cálculo linha / tabela ======= */
+    function computeRow(tr){
+      const ent = tr.querySelector('.entrada').value;
+      const si = tr.querySelector('.saidaIntervalo').value;
+      const ret = tr.querySelector('.retorno').value;
+      const out = tr.querySelector('.saidaFinal').value;
+
+      const entMin = timeToMinutes(ent);
+      const siMin = timeToMinutes(si);
+      const retMin = timeToMinutes(ret);
+      const outMin = timeToMinutes(out);
+
+      let worked = null;
+      if(entMin!==null && siMin!==null && retMin!==null && outMin!==null){
+        const morning = Math.max(0, siMin - entMin);
+        const afternoon = Math.max(0, outMin - retMin);
+        worked = morning + afternoon;
+      }
+
+      const horasEl = tr.querySelector('.horas');
+      const diffEl = tr.querySelector('.diff');
+
+      if(worked!==null){
+        horasEl.querySelector('.horasDec') ? horasEl.querySelector('.horasDec').textContent = minutesToDecimalHours(worked) : null;
+        horasEl.firstChild && (horasEl.firstChild.textContent = minutesToHHMM(worked));
+        const diff = worked - STANDARD_MIN_PER_DAY;
+        diffEl.textContent = minutesToHHMM(diff);
+        tr.dataset.worked = worked;
+        tr.dataset.diff = diff;
+      } else {
+        horasEl.firstChild && (horasEl.firstChild.textContent = '--:--');
+        horasEl.querySelector('.horasDec') ? horasEl.querySelector('.horasDec').textContent = '0.00' : null;
+        diffEl.textContent = '--:--';
+        tr.dataset.worked = '';
+        tr.dataset.diff = '';
+      }
+    }
+
+    function computeAll(){
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      let totalWorked = 0, totalDiff = 0; let any=false;
+      rows.forEach(r => {
+        computeRow(r);
+        const w = parseFloat(r.dataset.worked);
+        const d = parseFloat(r.dataset.diff);
+        if(!isNaN(w)){ totalWorked += w; any=true; }
+        if(!isNaN(d)){ totalDiff += d; }
+      });
+
+      if(any){
+        totalHorasEl.textContent = minutesToHHMM(totalWorked);
+        totalDiffEl.textContent = minutesToHHMM(totalDiff);
+        const extras = totalDiff>0 ? (totalDiff/60).toFixed(2) : '0.00';
+        const neg = totalDiff<0 ? (Math.abs(totalDiff)/60).toFixed(2) : '0.00';
+        totalExtrasEl.textContent = extras + ' h';
+        totalNegativasEl.textContent = neg + ' h';
+      } else {
+        totalHorasEl.textContent = '--:--';
+        totalDiffEl.textContent = '--:--';
+        totalExtrasEl.textContent = '0.00 h';
+        totalNegativasEl.textContent = '0.00 h';
+      }
+    }
+
+    /* ======= Export / Download ======= */
+    function downloadFile(filename, content, mime='text/plain'){
+      const blob = new Blob([content], {type: mime + ';charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 5000);
+    }
+
+    function exportJSON(){
+      const data = prepareExportData();
+      downloadFile('ponto_semanal.json', JSON.stringify(data, null, 2), 'application/json');
+      updateGlobalStatus('JSON gerado para download');
+    }
+
+    function exportCSV(){
+      const rows = prepareExportData();
+      const headers = ['dia','date','entrada','saida_intervalo','retorno','saida_final','horas_trabalhadas_hhmm','horas_trabalhadas_dec','dif_hhmm'];
+      const lines = [headers.join(',')];
+      rows.forEach(r=>{
+        const line = [
+          r.dia,
+          r.date || '',
+          r.entrada || '',
+          r.saida_intervalo || '',
+          r.retorno || '',
+          r.saida_final || '',
+          r.horas_trabalhadas_hhmm || '',
+          r.horas_trabalhadas_dec || '',
+          r.dif_hhmm || ''
+        ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+        lines.push(line);
+      });
+      // totals
+      lines.push(`"Total Semanal","","","","","","${totalHorasEl.textContent}","${(parseFloat(totalHorasEl.textContent.split(':')[0]||0) + (parseFloat(totalHorasEl.textContent.split(':')[1]||0)/60)).toFixed(2)}","${totalDiffEl.textContent}"`);
+      lines.push(`"Horas Extras","","","","","","${totalExtrasEl.textContent}","",""`);
+      lines.push(`"Horas Negativas","","","","","","${totalNegativasEl.textContent}","",""`);
+      downloadFile('ponto_semanal.csv', lines.join('\\n'), 'text/csv');
+      updateGlobalStatus('CSV gerado para download');
+    }
+
+    function prepareExportData(){
+      const rows = [];
+      DAYS.forEach(day=>{
+        const d = state[day] || {};
+        const worked = computeWorkedFromState(d);
+        const diffMin = (worked!==null ? worked - STANDARD_MIN_PER_DAY : null);
+        rows.push({
+          dia: day,
+          date: d.date || '',
+          entrada: d.entrada || '',
+          saida_intervalo: d.saidaIntervalo || '',
+          retorno: d.retorno || '',
+          saida_final: d.saidaFinal || '',
+          horas_trabalhadas_hhmm: worked!==null ? minutesToHHMM(worked) : '',
+          horas_trabalhadas_dec: worked!==null ? minutesToDecimalHours(worked) : '',
+          dif_hhmm: diffMin!==null ? minutesToHHMM(diffMin) : '',
+          savedAt: d.savedAt || ''
+        });
+      });
+      return rows;
+    }
+
+    function computeWorkedFromState(d){
+      if(!d) return null;
+      const ent = timeToMinutes(d.entrada);
+      const si = timeToMinutes(d.saidaIntervalo);
+      const ret = timeToMinutes(d.retorno);
+      const out = timeToMinutes(d.saidaFinal);
+      if(ent===null||si===null||ret===null||out===null) return null;
+      const morning = Math.max(0, si - ent);
+      const afternoon = Math.max(0, out - ret);
+      return morning + afternoon;
+    }
+
+    /* ======= Helpers ======= */
+    function timeAgo(iso){
+      if(!iso) return '';
+      const then = new Date(iso);
+      const diff = Math.floor((Date.now() - then.getTime())/1000);
+      if(diff < 60) return `${diff}s`;
+      if(diff < 3600) return `${Math.floor(diff/60)}m`;
+      if(diff < 86400) return `${Math.floor(diff/3600)}h`;
+      return `${Math.floor(diff/86400)}d`;
+    }
+
+    /* ======= Eventos globais ======= */
+    document.getElementById('btnExportCSV').addEventListener('click', ()=> exportCSV());
+    document.getElementById('btnExportJSON').addEventListener('click', ()=> exportJSON());
+    document.getElementById('btnClear').addEventListener('click', ()=> {
+      if(confirm('Deseja realmente apagar todos os dados salvos localmente?')) clearState();
+    });
+
+    /* ======= Inicialização ======= */
+    loadState();
+    renderRows();
+    computeAll();
+
+    // recalc periodicamente (se desejar)
+    setInterval(()=>{ computeAll(); }, 1000);
+
+    // Observador para salvar state quando fecha/navega (redundante com autosave)
+    window.addEventListener('beforeunload', ()=> {
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+    });
+
+  </script>
+</body>
+</html>
